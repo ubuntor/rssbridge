@@ -20,6 +20,7 @@ from flask import (
 from jinja2 import pass_eval_context
 from markupsafe import Markup, escape
 from werkzeug.exceptions import NotFound
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 REFETCH_HANDLES_SECS = 86400 * 7
 REFETCH_PROFILES_SECS = 86400 * 7
@@ -51,6 +52,7 @@ VALID_FILTERS = [
 DEFAULT_FILTER = "posts_and_author_threads"
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 iso = datetime.fromisoformat
 Path(CACHE_DIR).mkdir(parents=True, exist_ok=True)
 
