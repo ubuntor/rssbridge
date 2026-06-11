@@ -146,6 +146,8 @@ def format_author(author):
 def get_media_embeds(embed, author_did):
     embeds = []
     match embed["$type"]:
+        case "app.bsky.embed.gallery#view" | "app.bsky.embed.gallery":
+            return [j for i in embed["items"] for j in get_media_embeds(i, author_did)]
         case "app.bsky.embed.images#view":
             for image in embed["images"]:
                 alt = image["alt"]
@@ -157,6 +159,16 @@ def get_media_embeds(embed, author_did):
                         "alt": alt,
                     }
                 )
+        case "app.bsky.embed.gallery#viewImage":
+            alt = embed["alt"]
+            src = embed["fullsize"]
+            embeds.append(
+                {
+                    "type": "image",
+                    "url": src,
+                    "alt": alt,
+                }
+            )
         case "app.bsky.embed.images":
             for image in embed["images"]:
                 alt = image["alt"]
@@ -169,6 +181,17 @@ def get_media_embeds(embed, author_did):
                         "alt": alt,
                     }
                 )
+        case "app.bsky.embed.gallery#image":
+            alt = embed["alt"]
+            # FIXME: hardcoded...
+            src = f"{IMAGE_URL}/{author_did}/{embed['image']['ref']['$link']}@jpeg"
+            embeds.append(
+                {
+                    "type": "image",
+                    "url": src,
+                    "alt": alt,
+                }
+            )
         case "app.bsky.embed.video#view":
             embeds.append(
                 {
@@ -226,6 +249,12 @@ def get_post_metadata(post, actor):
                 data["categories"].append("image")
             case "app.bsky.embed.video#view":
                 data["categories"].append("video")
+            case "app.bsky.embed.gallery#view":
+                if any(
+                    item["$type"] == "app.bsky.embed.gallery#viewImage"
+                    for item in post["embed"]["items"]
+                ):
+                    data["categories"].append("image")
         if "record" in post["embed"]:
             if post["embed"]["$type"] == "app.bsky.embed.record#view":
                 record = post["embed"]["record"]
@@ -271,6 +300,7 @@ def get_post_metadata(post, actor):
             author = format_author(post["reply"]["parent"]["author"])
             data["title"] = f"Replied to {author}: "
             data["categories"].append("reply")
+    data["categories"] = sorted(set(data["categories"]))
 
     if post_text == "":
         if "image" in data["categories"]:
